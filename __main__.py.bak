@@ -1,0 +1,74 @@
+#---default libraries----#
+import sys
+
+#-----own-libraries-----#
+import d2
+import tree
+import io
+
+
+
+p
+helpstr =  ''' d2.py, a d2 matching and neighbour joining script by MDP.
+        usage: d2.py [options] path/to/file 
+        
+        options
+        -mode ['D2', 'D*2','DS2']
+            matching algorithm to use, normal D2, 
+            star or shepherd, default D2S
+        -length [1,2...10]
+            length of k-mers to compare, default 4}
+            
+        -NJ [1/0]
+            perform a neighbour join, default 1
+            
+    '''
+
+
+def parse_args(args):
+    validopts = {'-mode':['D2', 'D*2', 'DS2'], '-NJ':xrange(2),'-length':xrange(1,100), '-debug':xrange(2)}
+    opts = {'-mode':'D*2', '-NJ':1, '-length':4, '-debug':0}
+    if args:
+        givenopts = dict(zip(args[0::2],args[1::2]))
+        for key,value in givenopts.iteritems():
+            if key in {'-NJ', '-length', '-debug'}:
+                try:
+                    value = int(value)
+                except ValueError:
+                    raise KeyError("Invalid input: {} is not a valid argument for {}".format(key, value))
+            if key not in validopts:
+                raise KeyError("Invalid input: {} is not an option".format(key))
+            if value not in validopts[key]:
+                raise KeyError("Invalid input: {} is not a valid argument for {}".format(key, value))
+            opts[key] = value
+    return opts
+
+
+def do_thing(filename, opts):
+    sqs = io.get_sequences(filename)
+    align = d2.align(sqs, opts['-length'], mode = opts['-mode'], as_distance = opts['-NJ'])
+    #align = align_groups(sqs, lambda x:d2_score(opts['-length'], x, opts['-mode'], as_distance = True))
+    # if opts['-debug']:
+        # return align
+    # dist_align = pair_dist(align)
+    if opts['-NJ']:
+        mytree = tree.make(align, min)
+        return tree.to_newick(mytree)
+    else:
+        return sorted(align, key = lambda x:x[-1])
+
+def main():
+    if {'-help','--help','-h','--h'} & set(sys.argv) or len(sys.argv) == 1:
+        return helpstr
+    filename = sys.argv[-1]
+    #if len(sys.argv) > 2:
+    args = sys.argv[1:-1]
+    #else:
+    #    args = []
+    opts = parse_args(args)
+    return do_thing(filename, opts)
+
+    return do_thing(filename, opts)
+if __name__ == '__main__':
+    print main()
+
