@@ -74,12 +74,15 @@ def rank_trees(treeslist):
     
 
 def handle_files():
-    scores = []
     trees_ensemble = []
     globstr = sys.argv[1] if len(sys.argv) > 1 else '*.txt'
-    for filename in sorted(glob.glob(globstr)):
-        trees_ensemble.append(map(normalize_tree, preprocess_file(filename)))
-    map(print, map(lambda x: map(len, x), trees_ensemble))
+    trees_ensemble = map(lambda filename : 
+        map(normalize_tree, 
+            preprocess_file(filename)), 
+        sorted(glob.glob(globstr)))
+#    for filename in :
+#        trees_ensemble.append(map(normalize_tree, preprocess_file(filename)))qq
+    #md21ff123ap(print, map(lambda x: map(len, x), trees_ensemble))
     scores = map(rank_trees, trees_ensemble)
     return scores
 
@@ -87,6 +90,8 @@ def statistics(scores):
     frac = map(lambda row: (float(value) / row[-1] for value in row), scores)
     tilted = zip(*frac)
     means = map(lambda column: sum(column)/len(column), tilted)
+    mins = map(min, tilted)
+    maxs = map(max, tilted)
     std = map(lambda row_index, mean: 
             math.sqrt(
                 1.0/len(tilted[row_index]) * sum(
@@ -95,7 +100,7 @@ def statistics(scores):
                     )
                 ), 
             range(len(means)), means)
-    return (means, std)
+    return (means, std, mins, maxs)
 
 
 if __name__ == "__main__":
@@ -105,5 +110,6 @@ if __name__ == "__main__":
         print(*methods)
         scores = handle_files()
         map(print, scores)
+        print("Method, mean, std, min, max")
         map(print, zip(*((methods,) + statistics(scores))))
     
