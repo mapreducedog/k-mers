@@ -2,6 +2,7 @@ from __future__ import print_function
 import re
 import sys
 import glob
+import math
 __doc__ = '''comp_tree.py
 compares newick for the number of shared nodes
 usage : comp_tree [<glob_for_files>]
@@ -22,9 +23,10 @@ match_lbrace = re.compile(r"\(")
 match_rbrace = re.compile(r"\)")
 matches_re = [match_values, match_names, match_lbrace, match_rbrace]
 substitutes = [ '', r'"\1"', "[", "]"]
-methods = ["D2", "DS2", "DS2L", "Answer"]
+methods = ("D2", "DS2", "DS2L", "Answer")
 def compare_nodes(query_nodes, answer_nodes):
     #print(query_nodes,"\n", answer_nodes, "\n", query_nodes & answer_nodes,"\n\n")
+    #print(query_nodes & answer_nodes)
     return len(query_nodes & answer_nodes)
 
 
@@ -77,8 +79,23 @@ def handle_files():
     globstr = sys.argv[1] if len(sys.argv) > 1 else '*.txt'
     for filename in sorted(glob.glob(globstr)):
         trees_ensemble.append(map(normalize_tree, preprocess_file(filename)))
+    map(print, map(lambda x: map(len, x), trees_ensemble))
     scores = map(rank_trees, trees_ensemble)
     return scores
+
+def statistics(scores):
+    frac = map(lambda row: (float(value) / row[-1] for value in row), scores)
+    tilted = zip(*frac)
+    means = map(lambda column: sum(column)/len(column), tilted)
+    std = map(lambda row_index, mean: 
+            math.sqrt(
+                1.0/len(tilted[row_index]) * sum(
+                    map(lambda x: 
+                        (x - mean)**2, tilted[row_index])
+                    )
+                ), 
+            range(len(means)), means)
+    return (means, std)
 
 
 if __name__ == "__main__":
@@ -88,4 +105,5 @@ if __name__ == "__main__":
         print(*methods)
         scores = handle_files()
         map(print, scores)
+        map(print, zip(*((methods,) + statistics(scores))))
     
