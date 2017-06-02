@@ -4,7 +4,7 @@ import sys
 #-----own-libraries-----#
 import d2
 import tree
-import io
+import fasta_paml_io as fpio
 
 
 
@@ -54,7 +54,7 @@ def parse_args(args):
 
 
 def perform_align(filename, opts):
-    sqs = io.get_sequences(filename)
+    sqs = fpio.get_sequences(filename)
     align = d2.align(sqs, opts['-length'], mode = opts['-mode'], as_distance = opts['-NJ'])
     #align = align_groups(sqs, lambda x:d2_score(opts['-length'], x, opts['-mode'], as_distance = True))
     # if opts['-debug']:
