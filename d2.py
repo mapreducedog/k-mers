@@ -1,7 +1,42 @@
 #----default libraries ---- #
+
+from __future__ import division, print_function
+from __main__ import eprint
 import math
 import itertools
 from collections import namedtuple, Counter
+
+
+__with_substitutes__ = True
+
+substitions_letters = set('RYSWKMBDHVN')
+substitution_table = {
+    'A':'A',
+    'C':'C',
+    'G':'G',
+    'T':'T',
+    'R':'AG',
+    'Y':'CT', 
+    'S':'GC', 
+    'W':'AT',
+    'K':'GT',
+    'M':'AC',
+    'B':'CGT',
+    'D':'AGT',
+    'H':'ACT',
+    'V':'ACG',
+    'N':'ACGT'
+                        
+}
+flipsub_table = {
+    'A':'ARWMDHVN',
+    'C':'CYSMBHVN',
+    'G':'GRSKBDVN',
+    'T':'TYWKBDHN',
+}
+
+subword_cost = {}
+
 
 
 class SeqHolder(namedtuple('SeqHolder', 'adj_len letter_dist word_count')):
@@ -13,25 +48,48 @@ class SeqHolder(namedtuple('SeqHolder', 'adj_len letter_dist word_count')):
         return float(self.word_count[word]) - self.adj_len * self.word_prob(word)
     def log_normalized_frequency(self, word):
         #this is another way to have a zero-centered, normally distributed frequency function, which is required for shepp distance
-        if (not self.word_count[word]): #not observed
+        if (not self.count(word)): #not observed
             if (not self.word_prob(word)): #not expected either
                 return 0 #the number of expected matched the number of observed, so return 0
             else: 
-                return math.log(float(self.word_count[word] + 1) / (self.adj_len * self.word_prob(word)), 2) 
+                return math.log(float(self.count(word) + 1) / (self.adj_len * self.word_prob(word)), 2) 
                 #cannot take a log of 0, so instead we take a log of the minimum observable
         else:
-            ratio = float(self.word_count[word]) / (self.adj_len * self.word_prob(word))
+            ratio = float(self.count(word)) / (self.adj_len * self.word_prob(word))
             return math.log(ratio, 2)
-        
+    def setup_substcount(self, possible_words):
+        words_copy = self.word_count.copy()
+        for word in possible_words:
+            self.word_count[word] = sum((float(words_copy[subst_word]) / subst_value
+                                for subst_word, subst_value in subword_cost[word]))
     def count(self, word):
+        #if __with_substitutes__:
+        #    return sum((float(self.word_count[subst_word]) / subst_value
+         #                       for  subst_word, subst_value in create_substitutes(word)))
         return self.word_count[word]
-    
+
+def create_substitutes(word):
+    product = lambda iterable: reduce(lambda x,y: x*y, iterable, 1)
+    subst_words = map(''.join, itertools.product(*map(lambda letter: flipsub_table[letter], word)))
+    subst_values = map(lambda word: product((len(substitution_table[letter]) for letter in word)), subst_words) 
+    return zip(subst_words, subst_values)
+
+def setup_substitutes(possible_words):
+    global subword_cost #strictly not needed, but for clarities sake
+    product = lambda iterable: reduce(lambda x,y: x*y, iterable, 1)
+    for word in possible_words:
+    #what matches do we have
+        subst_words = map(''.join, itertools.product(*map(lambda letter: flipsub_table[letter], word)))
+    #how many words does this match represent
+        subst_values = map(lambda word: product((len(substitution_table[letter]) for letter in word)), subst_words) 
+        subword_cost[word] = zip(subst_words, subst_values)
 
 def setup_holder(seq, word_length, alphabet):
     get_words = lambda seq, length: [seq[x:x+length] for x in range(len(seq) - length + 1)]
     seq_len = float(len(seq))
     adj_len = seq_len - word_length
-    letter_dist = {letter:seq.count(letter)/seq_len for letter in alphabet}
+    letter_dist = {letter:seq.count(letter)/seq_len for letter in (substitution_table.keys() if __with_substitutes__ else
+                                                                    alphabet)}
     #print letter_dist
     #raw_input()
     word_count = Counter(get_words(seq, word_length))
@@ -41,9 +99,18 @@ def setup_holder(seq, word_length, alphabet):
 def d2_distance(score, seqholders, possible_words):
     product = lambda iterable: reduce(lambda x,y:x*y, iterable)
     pyth = lambda iterable:math.sqrt(reduce(lambda x,y:x + y**2.0, iterable, 0)) #pythogarean distance,    sub = 
-    sub = product((pyth((seq.count(word) for word in possible_words))) for seq in seqholders)
+    pyths = [pyth((seq.count(word) for word in possible_words)) for seq in seqholders]
+    sub = product(pyths)
     
-    return 0.5 * (1 - float(score)/sub)
+    try:
+        return 0.5 * (1 - float(score)/sub)
+    except ZeroDivisionError:
+        print("fail")
+        for pos, seq in enumerate(seqholders):
+            print(seq, "all zeros {}".format(not any(seq.word_count.values())))
+        print (pyths)
+        print(create_substitutes("AAAA"))
+        raise
 
 def dshep_distance(score, seqholders, possible_words, normalize = SeqHolder.normalized_frequency):
     '''d2s as in song et al pg 347
@@ -81,6 +148,21 @@ def dstar_distance(score, seqholders, possible_words):
         for seq in seqholders))
     return 0.5 * (1 - float(score)/correction)
 
+def dstar_distance_debug(score, seqholders, possible_words):
+    product = lambda iterable: reduce(lambda x,y:x*y, iterable)
+    def cor_func(num, seq):
+        for word in possible_words:
+            try: 
+                yield seq.normalized_frequency(word) ** 2.0 \
+                    / seq.adj_len * seq.word_prob(word) 
+            except ZeroDivisionError:
+                print(num ,seq.adj_len, seq.word_prob(word), word)
+                raise
+        
+    correction = product((                                                                  \
+        sum(cor_func(num, seq)) ** 0.5                                                            \
+        for num, seq in enumerate(seqholders)))
+    return 0.5 * (1 - float(score)/correction)
 
 
 def score_pair(seqholders, mode = 'D2', possible_words = None, as_distance = False):
@@ -112,8 +194,8 @@ def score_pair(seqholders, mode = 'D2', possible_words = None, as_distance = Fal
     assert possible_words is not None
     
     
-    
     score = sum((stat[mode](seqholders, word) for word in possible_words))
+    
     if as_distance:
         return {
             'D*2':dstar_distance,
@@ -126,7 +208,14 @@ def score_pair(seqholders, mode = 'D2', possible_words = None, as_distance = Fal
     
 
 def make_alphabet(sequences):
-    return ''.join(set(''.join(sequences)))
+    global __with_substitutes__
+    allchars = set(''.join(sequences))
+    if allchars & substitions_letters: #we have a sequence with substitions
+        __with_substitutes__ = True
+        return ''.join(allchars - substitions_letters)
+    else:
+        return ''.join(allchars) 
+    
 def make_possible_words(alphabet, word_length):
     '''returns list of all possible word_length words for a given alphabet'''
     return [''.join(letters) for letters in itertools.product(alphabet, repeat = word_length)]
@@ -161,6 +250,12 @@ def align(named_sequences, word_length,  mode = 'D2', as_distance = False, pair_
     alphabet = make_alphabet(sequences)
     seqholders = word_count_sequences(sequences, word_length, alphabet)
     possible_words = make_possible_words(alphabet, word_length)
+    
+    if __with_substitutes__: #we setup the hashtable for substitutes to improve performance here, rather than recalculating every time
+        setup_substitutes(possible_words)
+        for seqholder in seqholders:
+            seqholder.setup_substcount(possible_words)
+        
     aligns = []
     for pair_numbers in itertools.combinations(range(len(sequences)), pair_size):
         pair_names = tuple([names[nr] for nr in pair_numbers])

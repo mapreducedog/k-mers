@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __main__ import eprint
 
 def make(scores, comparator = min):
     sort_tup = lambda *x: tuple(sorted(x))
@@ -14,8 +15,8 @@ def make(scores, comparator = min):
         return {lt:lt_dist, rt:rt_dist}
     def distance_to_node(tax, node, distance_matrix):
         return (distance_matrix[sort_tup(tax, node[0])] + distance_matrix[sort_tup(tax, node[1])] - distance_matrix[node]) / 2 
-    def modified_distance(lr, distance_matrix):
-        divergence_scores = calculate_divergence_scores(distance_matrix)
+    def modified_distance(lr,divergence_scores):
+        #divergence_scores = calculate_divergence_scores(distance_matrix)
         names = divergence_scores.keys()
         l,r = sort_tup(*lr) 
         return distance_matrix[lr] - (divergence_scores[l] + divergence_scores[r])/(len(names) -  2)
@@ -23,11 +24,18 @@ def make(scores, comparator = min):
     scores = dict(scores)
     nodes = []
     distance_matrix = {sort_tup(*key): scores[key] for key in scores} 
+    
     while len(distance_matrix) > 1:
-        q_matrix = {lr:modified_distance(lr, distance_matrix) for lr in distance_matrix} #calc modified distance for each pair
+        eprint("current dist matrix:", len(distance_matrix))
+        eprint("calculating modified distance")
+        divergence_scores = calculate_divergence_scores(distance_matrix)
+        q_matrix = {lr:modified_distance(lr, divergence_scores) for lr in distance_matrix} #calc modified distance for each pair
+        eprint("joining nodenames")
         q_matrix_names = set(reduce(lambda x,y: x+y, q_matrix, tuple())) #all the nodenames
+        eprint("selecting new node")
         new_node = comparator(q_matrix, key = lambda x:q_matrix[x]) #select the most appropriate new node
         nodes.append((new_node,distance_to_own_node(new_node, distance_matrix))) #add the new node to the results
+        eprint("clearing old node, and calculating distances")
         for key in q_matrix_names:
             if key in new_node:
                 continue

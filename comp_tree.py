@@ -1,3 +1,4 @@
+#------default libraries--------
 from __future__ import print_function
 import re
 import sys
@@ -5,13 +6,20 @@ import glob
 import math
 __doc__ = '''comp_tree.py
 compares newick for the number of shared nodes
-usage : comp_tree [<glob_for_files>]
+usage : comp_tree [<glob_for_files>] 
 if no path is supplied, inspect the current working directory for all ".txt" files, 
 otherwise globs as supplied argument
 for example 
 python comp_tree ~/*.txt
 or
 python comp_tree ~/*.tree
+
+
+to shorten files use 
+comp_tree -s [<glob_for_files>]
+or 
+comp_tree --shorten [<glob_for_files>]
+
 '''
 
 
@@ -75,7 +83,7 @@ def rank_trees(treeslist):
 
 def handle_files():
     trees_ensemble = []
-    globstr = sys.argv[1] if len(sys.argv) > 1 else '*.txt'
+    globstr = sys.argv[-1] if len(sys.argv) > 1 else '*.txt'
     trees_ensemble = map(lambda filename : 
         map(normalize_tree, 
             preprocess_file(filename)), 
@@ -85,6 +93,14 @@ def handle_files():
     #md21ff123ap(print, map(lambda x: map(len, x), trees_ensemble))
     scores = map(rank_trees, trees_ensemble)
     return scores
+def shorten_files():
+    globstr = sys.argv[-1] if len(sys.argv) > 2 else "*.txt"
+    for filename in glob.glob(globstr):
+        lines = preprocess_file(filename)
+        with open("short_{}".format(filename), 'w') as outfile:
+            map(lambda x: outfile.write(x + "\n"), lines)
+    
+
 
 def statistics(scores):
     frac = map(lambda row: (float(value) / row[-1] for value in row), scores)
@@ -104,8 +120,11 @@ def statistics(scores):
 
 
 if __name__ == "__main__":
-    if '-h' in sys.argv:
+    setargs = set(sys.argv)
+    if {'-h', '--help', '/?'} & setargs:
         print(__doc__)
+    elif {'-s', '--shorten'} & setargs:
+        shorten_files()
     else:
         print(*methods)
         scores = handle_files()

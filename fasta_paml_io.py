@@ -30,5 +30,5 @@ def get_sequences(filename,  format = dict):
         return fasta_parser(filename, format)
     if filename.endswith('.paml'):
         return paml_parser(filename, format)
-    raise RuntimeError("Couldnt parse file")
+    raise RuntimeError("Couldnt parse file, unknown extension {}, expected .fasta or .paml".format(filename.split('.')[-1]))
 

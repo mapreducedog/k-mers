@@ -1,12 +1,15 @@
 #---default libraries----#
+from __future__ import print_function
 import sys
+#declare here so other d2 and tree can use this
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 
 #-----own-libraries-----#
 import d2
 import tree
 import fasta_paml_io as fpio
-
-
 
 
 helpstr =  ''' d2.py, a d2 matching and neighbour joining script by MDP.
@@ -33,7 +36,7 @@ def parse_args(args):
     -NJ:1
     -length:4
     -debug:0
-    '''
+    ''' 
     
     validopts = {'-mode':['D2', 'D*2', 'DS2', 'DS2L'], '-NJ':xrange(2),'-length':xrange(1,100), '-debug':xrange(2)}
     opts = {'-mode':'D*2', '-NJ':1, '-length':4, '-debug':0}
@@ -56,6 +59,7 @@ def parse_args(args):
 def perform_align(filename, opts):
     sqs = fpio.get_sequences(filename)
     align = d2.align(sqs, opts['-length'], mode = opts['-mode'], as_distance = opts['-NJ'])
+    eprint("passed align!")
     #align = align_groups(sqs, lambda x:d2_score(opts['-length'], x, opts['-mode'], as_distance = True))
     # if opts['-debug']:
         # return align
