@@ -13,8 +13,7 @@ import fasta_paml_io as fpio
 
 
 helpstr =  ''' d2.py, a d2 matching and neighbour joining script by MDP.
-        usage: d2.py [options] path/to/file 
-        
+        usage: __main__.py [options] path/to/file 
         options
         -mode ['D2', 'D*2','DS2', DS2L']
             matching algorithm to use, normal D2, 
@@ -47,11 +46,11 @@ def parse_args(args):
                 try:
                     value = int(value)
                 except ValueError:
-                    raise KeyError("Invalid input: {} is not a valid argument for {}".format(key, value))
+                    raise KeyError("Invalid input: {} is not a valid argument for {}".format(value, key))
             if key not in validopts:
                 raise KeyError("Invalid input: {} is not an option".format(key))
             if value not in validopts[key]:
-                raise KeyError("Invalid input: {} is not a valid argument for {}".format(key, value))
+                raise KeyError("Invalid input: {} is not a valid argument for {}".format(value, key))
             opts[key] = value
     return opts
 

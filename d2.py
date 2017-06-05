@@ -6,8 +6,8 @@ import math
 import itertools
 from collections import namedtuple, Counter
 
-
-__with_substitutes__ = True
+__as_aminoacids__ = False
+__with_substitutes__ = False
 
 substitions_letters = set('RYSWKMBDHVN')
 substitution_table = {
@@ -208,9 +208,10 @@ def score_pair(seqholders, mode = 'D2', possible_words = None, as_distance = Fal
     
 
 def make_alphabet(sequences):
+    '''infer the alphabet from the supplied sequences'''
     global __with_substitutes__
     allchars = set(''.join(sequences))
-    if allchars & substitions_letters: #we have a sequence with substitions
+    if (not __as_aminoacids__)  and substitions_letters & allchars: #we have a sequence with substitions
         __with_substitutes__ = True
         return ''.join(allchars - substitions_letters)
     else:
@@ -254,7 +255,7 @@ def align(named_sequences, word_length,  mode = 'D2', as_distance = False, pair_
     if __with_substitutes__: #we setup the hashtable for substitutes to improve performance here, rather than recalculating every time
         setup_substitutes(possible_words)
         for seqholder in seqholders:
-            seqholder.setup_substcount(possible_words)
+            seqholder.setup_substcount(possible_words) #adjust the wordcount according to the hastable created above
         
     aligns = []
     for pair_numbers in itertools.combinations(range(len(sequences)), pair_size):

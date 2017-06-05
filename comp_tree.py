@@ -6,7 +6,10 @@ import glob
 import math
 __doc__ = '''comp_tree.py
 compares newick for the number of shared nodes
-usage : comp_tree [<glob_for_files>] 
+usage : comp_tree [<glob_for_files>]
+
+expects a file with newick trees, and will compare all (includeing the last) trees with the last tree in the file, this is assumed to be the model
+
 if no path is supplied, inspect the current working directory for all ".txt" files, 
 otherwise globs as supplied argument
 for example 
@@ -72,7 +75,7 @@ def get_nodes(ltree):
     return total - {top,} #remove the headnode from the list, everyone will share this
 def preprocess_file(filename):
     with open(filename) as infile:
-        lines = map(lambda x: x.strip(), filter(lambda x:x.startswith('('), infile))
+        lines = map(lambda x: x.strip().replace(";", ''), filter(lambda x:x.startswith('('), infile))
     return lines
 def rank_trees(treeslist):
     '''expects a list of trees of which the last tree is the "answer_tree, returns a list of total matching nodes between those trees and the answer trees, (the last column is thus the total number of (non-terminal, non-head) nodes in the answer_tree'''
@@ -95,11 +98,16 @@ def handle_files():
     return scores
 def shorten_files():
     globstr = sys.argv[-1] if len(sys.argv) > 2 else "*.txt"
-    for filename in glob.glob(globstr):
-        lines = preprocess_file(filename)
-        with open("short_{}".format(filename), 'w') as outfile:
-            map(lambda x: outfile.write(x + "\n"), lines)
-    
+    lines = map(preprocess_file, sorted(glob.glob(globstr)))
+    by_method = zip(*lines)
+    answers = by_method[-1]
+    meth_with_ans = map(lambda method: 
+                            reduce(lambda x,y : x+y, 
+                        zip(method, answers), tuple()), 
+                    by_method) #intersperse method with answers
+    for pos, method in enumerate(meth_with_ans, 1):
+        with open("Method-{}_trees.txt".format(pos), 'w') as outfile:
+            outfile.write(";\n".join(method) + ";")
 
 
 def statistics(scores):
